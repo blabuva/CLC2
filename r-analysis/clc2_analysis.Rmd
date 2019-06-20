@@ -1,0 +1,151 @@
+---
+title: "CLC2 Blocker Analysis"
+author: "Adam Lu"
+date: "6/11/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load libraries
+
+```{r, message=FALSE}
+# tidyverse includes the packages readr, dplyr, ggplot2 ... etc.
+library(tidyverse)
+
+# ggbeeswarm includes geom_beeswarm()
+library(ggbeeswarm)
+
+# broom includes tidy()
+library(broom)
+
+# ggpubr for paired box plots
+library(ggpubr)
+
+# matlab for fileparts
+library(matlab)
+```
+
+## Set parameters
+
+```{r}
+## Hard-coded parameters
+drugFilePath <- "../data/blinded/drug-clean/drug-clean_oscDurationSec_averaged.csv"
+controlFilePath <- "../data/blinded/control-clean/control-clean_oscDurationSec_averaged.csv"
+phaseNamePath <- "phase_names.csv"
+measureLabel <- "Oscillation Duration (s)"
+figTitle <- "Change in oscillation duration for each slice"
+```
+
+## Preparation
+
+```{r}
+## Extract the file base names
+drugFileParts <- fileparts(drugFilePath)
+drugFileBase <- drugFileParts$name
+controlFileParts <- fileparts(controlFilePath)
+controlFileBase <- controlFileParts$name
+
+## Extract the measure name
+drugFileBaseParts <- strsplit(drugFileBase, '_')
+measureName <- drugFileBaseParts[[1]][2]
+paste("Measure to analyze:", measureName)
+```
+
+## Load data
+
+#### Raw data
+
+```{r, message = FALSE}
+drugDataRaw <- read_csv(drugFilePath)
+drugDataRaw
+```
+
+```{r, message = FALSE}
+controlDataRaw <- read_csv(controlFilePath)
+controlDataRaw
+```
+
+```{r, message = FALSE}
+phaseNameTable <- read_csv(phaseNamePath)
+phaseNameTable
+```
+
+
+#### Reorganized data
+
+```{r}
+# Put into tidied format and rename variables
+drugData <- 
+    drugDataRaw %>% 
+    gather(key = "measureSliceName", value = !!measureName, -1) %>%
+    separate("measureSliceName", c("measureName", "date", "sliceStr"), sep = "_") %>% 
+    unite("sliceName", c("date", "sliceStr"), sep = "_") %>% 
+    left_join(phaseNameTable, by = "phaseNumber") %>% 
+    mutate("phaseName" = factor(phaseName))
+
+drugData
+```
+
+## Statistics
+
+``` {r, message = FALSE}
+# Construct formula for t test
+formulaForTestStr <- paste(measureName, "~", "phaseName")
+formulaForTest <- as.formula(formulaForTestStr)
+paste("Paired t test formula:", formulaForTestStr)
+```
+
+#### Baseline vs. Drug
+
+``` {r, message = FALSE}
+# Extract only phases 1 and 2
+drugDataPhase12 <- 
+    drugData %>% filter(phaseNumber == 1 | phaseNumber == 2)
+
+# Apply a paired two sample t-test between phases 1 and 2
+tTestResultPhase12 <-
+    t.test(formulaForTest, data = drugDataPhase12, paired = TRUE)
+tTestResultPhase12
+```
+
+#### Drug vs. Wash-Out
+
+``` {r, message = FALSE}
+# Extract only phases 2 and 3
+drugDataPhase23 <- 
+    drugData %>% filter(phaseNumber == 2 | phaseNumber == 3)
+
+# Apply a paired two sample t-test between phases 2 and 3
+tTestResultPhase23 <-
+    t.test(formulaForTest, data = drugDataPhase23, paired = TRUE)
+tTestResultPhase23
+```
+
+#### Baseline vs. Wash-Out
+
+``` {r, message = FALSE}
+# Extract only phases 1 and 3
+drugDataPhase13 <- 
+    drugData %>% filter(phaseNumber == 1 | phaseNumber == 3)
+
+# Apply a paired two sample t-test between phases 2 and 3
+tTestResultPhase13 <-
+    t.test(formulaForTest, data = drugDataPhase13, paired = TRUE)
+tTestResultPhase13
+```
+
+## Plots
+
+``` {r, message = FALSE}
+# Pair the data to visualize the change from baseline to drug
+ggpaired(drugData, x = "phaseName", y = measureName, id = "sliceName",
+    color = "phaseName", fill = "white", palette = c("blue", "red", "purple"), 
+    width = 0.5, point.size = 1.2, line.size = 0.5, line.color = "gray", 
+    title = figTitle, xlab = FALSE, ylab = measureLabel, legend.title = "Phase Name")
+
+ggsave(paste(measureName, "pairedboxplot.png", sep = "_"))
+```
+

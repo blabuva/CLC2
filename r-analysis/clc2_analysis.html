@@ -434,12 +434,8 @@ paste(&quot;Number of files to process:&quot;, nFiles)</code></pre>
 <div id="raw-data" class="section level4">
 <h4>Raw data</h4>
 <pre class="r"><code># Import raw data
-dataRaw &lt;- lapply(filePaths, function (x) {read_csv(x)})
-
-# Display as tibbles
-paste(drugNames[1], &quot;:&quot;, sep = &quot;&quot;)</code></pre>
+dataRaw &lt;- lapply(filePaths, function (x) {read_csv(x)})</code></pre>
 <pre><code>## [1] &quot;AK3-238:&quot;</code></pre>
-<pre class="r"><code>dataRaw[[1]]</code></pre>
 <pre><code>## # A tibble: 3 x 11
 ##   phaseNumber oscDurationSec_~ oscDurationSec_~ oscDurationSec_~
 ##         &lt;dbl&gt;            &lt;dbl&gt;            &lt;dbl&gt;            &lt;dbl&gt;
@@ -453,9 +449,7 @@ paste(drugNames[1], &quot;:&quot;, sep = &quot;&quot;)</code></pre>
 ## #   oscDurationSec_20190606_slice2 &lt;dbl&gt;,
 ## #   oscDurationSec_20190606_slice3 &lt;dbl&gt;,
 ## #   oscDurationSec_20190607_slice4 &lt;dbl&gt;</code></pre>
-<pre class="r"><code>paste(drugNames[2], &quot;:&quot;, sep = &quot;&quot;)</code></pre>
 <pre><code>## [1] &quot;DMSO:&quot;</code></pre>
-<pre class="r"><code>dataRaw[[2]]</code></pre>
 <pre><code>## # A tibble: 3 x 8
 ##   phaseNumber oscDurationSec_~ oscDurationSec_~ oscDurationSec_~
 ##         &lt;dbl&gt;            &lt;dbl&gt;            &lt;dbl&gt;            &lt;dbl&gt;
@@ -482,12 +476,8 @@ phaseNameTable</code></pre>
 <div id="reorganized-data" class="section level4">
 <h4>Reorganized data</h4>
 <pre class="r"><code># Put into tidied format and rename variables
-dataReorg &lt;- lapply(dataRaw, tidy_data_oscillations, phaseNameTable = phaseNameTable, measureName = measureName)
-
-# Display as tibbles
-paste(drugNames[1], &quot;:&quot;, sep = &quot;&quot;)</code></pre>
+dataReorg &lt;- lapply(dataRaw, tidy_data_oscillations, phaseNameTable = phaseNameTable, measureName = measureName)</code></pre>
 <pre><code>## [1] &quot;AK3-238:&quot;</code></pre>
-<pre class="r"><code>dataReorg[[1]]</code></pre>
 <pre><code>## # A tibble: 30 x 5
 ##    phaseNumber measureName    sliceName       oscDurationSec phaseName
 ##          &lt;dbl&gt; &lt;chr&gt;          &lt;chr&gt;                    &lt;dbl&gt; &lt;fct&gt;    
@@ -502,9 +492,7 @@ paste(drugNames[1], &quot;:&quot;, sep = &quot;&quot;)</code></pre>
 ##  9           3 oscDurationSec 20190604_slice2           6.36 Wash-out 
 ## 10           1 oscDurationSec 20190604_slice3           5.17 Baseline 
 ## # ... with 20 more rows</code></pre>
-<pre class="r"><code>paste(drugNames[2], &quot;:&quot;, sep = &quot;&quot;)</code></pre>
 <pre><code>## [1] &quot;DMSO:&quot;</code></pre>
-<pre class="r"><code>dataReorg[[2]]</code></pre>
 <pre><code>## # A tibble: 21 x 5
 ##    phaseNumber measureName    sliceName       oscDurationSec phaseName
 ##          &lt;dbl&gt; &lt;chr&gt;          &lt;chr&gt;                    &lt;dbl&gt; &lt;fct&gt;    
@@ -532,16 +520,11 @@ paste(&quot;Paired t test formula:&quot;, formulaForTestStr)</code></pre>
 <h4>Baseline vs. Drug</h4>
 <pre class="r"><code># Extract only phases 1 and 2
 dataPhase12 &lt;- 
-    lapply(dataReorg, function (x) {x %&gt;% filter(phaseNumber == 1 | phaseNumber == 2)})
-
-# Apply a paired two sample t-test between phases 1 and 2
+    lapply(dataReorg, function (x) {x %&gt;% filter(phaseNumber == 1 | phaseNumber == 2)})</code></pre>
+<pre class="r"><code># Apply a paired two sample t-test between phases 1 and 2
 tTestResultPhase12 &lt;- 
-    lapply(dataPhase12, function (x) {t.test(formulaForTest, data = x, paired = TRUE)})
-
-# Display results
-paste(drugNames[1], &quot;:&quot;, sep = &quot;&quot;)</code></pre>
+    lapply(dataPhase12, function (x) {t.test(formulaForTest, data = x, paired = TRUE)})</code></pre>
 <pre><code>## [1] &quot;AK3-238:&quot;</code></pre>
-<pre class="r"><code>tTestResultPhase12[[1]]</code></pre>
 <pre><code>## 
 ##  Paired t-test
 ## 
@@ -553,9 +536,7 @@ paste(drugNames[1], &quot;:&quot;, sep = &quot;&quot;)</code></pre>
 ## sample estimates:
 ## mean of the differences 
 ##                    0.81</code></pre>
-<pre class="r"><code>paste(drugNames[2], &quot;:&quot;, sep = &quot;&quot;)</code></pre>
 <pre><code>## [1] &quot;DMSO:&quot;</code></pre>
-<pre class="r"><code>tTestResultPhase12[[2]]</code></pre>
 <pre><code>## 
 ##  Paired t-test
 ## 
@@ -567,21 +548,33 @@ paste(drugNames[1], &quot;:&quot;, sep = &quot;&quot;)</code></pre>
 ## sample estimates:
 ## mean of the differences 
 ##               0.4382857</code></pre>
+<pre class="r"><code># Apply a paired Wilcoxon rank-sum test between phases 1 and 2
+wTestResultPhase12 &lt;- 
+    lapply(dataPhase12, function (x) {wilcox.test(formulaForTest, data = x, paired = TRUE)})</code></pre>
+<pre><code>## [1] &quot;AK3-238:&quot;</code></pre>
+<pre><code>## 
+##  Wilcoxon signed rank test
+## 
+## data:  oscDurationSec by phaseName
+## V = 55, p-value = 0.001953
+## alternative hypothesis: true location shift is not equal to 0</code></pre>
+<pre><code>## [1] &quot;DMSO:&quot;</code></pre>
+<pre><code>## 
+##  Wilcoxon signed rank test
+## 
+## data:  oscDurationSec by phaseName
+## V = 21, p-value = 0.2969
+## alternative hypothesis: true location shift is not equal to 0</code></pre>
 </div>
 <div id="drug-vs.-wash-out" class="section level4">
 <h4>Drug vs. Wash-Out</h4>
 <pre class="r"><code># Extract only phases 2 and 3
 dataPhase23 &lt;- 
-    lapply(dataReorg, function (x) {x %&gt;% filter(phaseNumber == 2 | phaseNumber == 3)})
-
-# Apply a paired two sample t-test between phases 2 and 3
+    lapply(dataReorg, function (x) {x %&gt;% filter(phaseNumber == 2 | phaseNumber == 3)})</code></pre>
+<pre class="r"><code># Apply a paired two sample t-test between phases 2 and 3
 tTestResultPhase23 &lt;- 
-    lapply(dataPhase23, function (x) {t.test(formulaForTest, data = x, paired = TRUE)})
-
-# Display results
-paste(drugNames[1], &quot;:&quot;, sep = &quot;&quot;)</code></pre>
+    lapply(dataPhase23, function (x) {t.test(formulaForTest, data = x, paired = TRUE)})</code></pre>
 <pre><code>## [1] &quot;AK3-238:&quot;</code></pre>
-<pre class="r"><code>tTestResultPhase23[[1]]</code></pre>
 <pre><code>## 
 ##  Paired t-test
 ## 
@@ -593,9 +586,7 @@ paste(drugNames[1], &quot;:&quot;, sep = &quot;&quot;)</code></pre>
 ## sample estimates:
 ## mean of the differences 
 ##                   0.037</code></pre>
-<pre class="r"><code>paste(drugNames[2], &quot;:&quot;, sep = &quot;&quot;)</code></pre>
 <pre><code>## [1] &quot;DMSO:&quot;</code></pre>
-<pre class="r"><code>tTestResultPhase23[[2]]</code></pre>
 <pre><code>## 
 ##  Paired t-test
 ## 
@@ -607,21 +598,33 @@ paste(drugNames[1], &quot;:&quot;, sep = &quot;&quot;)</code></pre>
 ## sample estimates:
 ## mean of the differences 
 ##              -0.1985714</code></pre>
+<pre class="r"><code># Apply a paired Wilcoxon rank-sum test between phases 2 and 3
+wTestResultPhase23 &lt;- 
+    lapply(dataPhase23, function (x) {wilcox.test(formulaForTest, data = x, paired = TRUE)})</code></pre>
+<pre><code>## [1] &quot;AK3-238:&quot;</code></pre>
+<pre><code>## 
+##  Wilcoxon signed rank test
+## 
+## data:  oscDurationSec by phaseName
+## V = 36, p-value = 0.4316
+## alternative hypothesis: true location shift is not equal to 0</code></pre>
+<pre><code>## [1] &quot;DMSO:&quot;</code></pre>
+<pre><code>## 
+##  Wilcoxon signed rank test
+## 
+## data:  oscDurationSec by phaseName
+## V = 12, p-value = 0.8125
+## alternative hypothesis: true location shift is not equal to 0</code></pre>
 </div>
 <div id="baseline-vs.-wash-out" class="section level4">
 <h4>Baseline vs. Wash-Out</h4>
 <pre class="r"><code># Extract only phases 1 and 3
 dataPhase13 &lt;- 
-    lapply(dataReorg, function (x) {x %&gt;% filter(phaseNumber == 1 | phaseNumber == 3)})
-
-# Apply a paired two sample t-test between phases 1 and 3
+    lapply(dataReorg, function (x) {x %&gt;% filter(phaseNumber == 1 | phaseNumber == 3)})</code></pre>
+<pre class="r"><code># Apply a paired two sample t-test between phases 1 and 3
 tTestResultPhase13 &lt;- 
-    lapply(dataPhase13, function (x) {t.test(formulaForTest, data = x, paired = TRUE)})
-
-# Display results
-paste(drugNames[1], &quot;:&quot;, sep = &quot;&quot;)</code></pre>
+    lapply(dataPhase13, function (x) {t.test(formulaForTest, data = x, paired = TRUE)})</code></pre>
 <pre><code>## [1] &quot;AK3-238:&quot;</code></pre>
-<pre class="r"><code>tTestResultPhase13[[1]]</code></pre>
 <pre><code>## 
 ##  Paired t-test
 ## 
@@ -633,9 +636,7 @@ paste(drugNames[1], &quot;:&quot;, sep = &quot;&quot;)</code></pre>
 ## sample estimates:
 ## mean of the differences 
 ##                   0.847</code></pre>
-<pre class="r"><code>paste(drugNames[2], &quot;:&quot;, sep = &quot;&quot;)</code></pre>
 <pre><code>## [1] &quot;DMSO:&quot;</code></pre>
-<pre class="r"><code>tTestResultPhase13[[2]]</code></pre>
 <pre><code>## 
 ##  Paired t-test
 ## 
@@ -647,15 +648,32 @@ paste(drugNames[1], &quot;:&quot;, sep = &quot;&quot;)</code></pre>
 ## sample estimates:
 ## mean of the differences 
 ##               0.2397143</code></pre>
+<pre class="r"><code># Apply a paired Wilcoxon rank-sum test between phases 1 and 3
+wTestResultPhase13 &lt;- 
+    lapply(dataPhase13, function (x) {wilcox.test(formulaForTest, data = x, paired = TRUE)})</code></pre>
+<pre><code>## [1] &quot;AK3-238:&quot;</code></pre>
+<pre><code>## 
+##  Wilcoxon signed rank test
+## 
+## data:  oscDurationSec by phaseName
+## V = 45, p-value = 0.08398
+## alternative hypothesis: true location shift is not equal to 0</code></pre>
+<pre><code>## [1] &quot;DMSO:&quot;</code></pre>
+<pre><code>## 
+##  Wilcoxon signed rank test
+## 
+## data:  oscDurationSec by phaseName
+## V = 22, p-value = 0.2188
+## alternative hypothesis: true location shift is not equal to 0</code></pre>
 </div>
 </div>
 <div id="plots" class="section level2">
 <h2>Plots</h2>
 <pre class="r"><code># Plot box plots with all phases
-plots &lt;- mapply(plot_paired_boxplot, data = dataReorg, prefix = filePrefixes, measureName = measureName, drugName = drugNames, drugColor = drugColors, suffix = &quot;pairedboxplot_all.png&quot;)
+plots_all &lt;- mapply(plot_paired_boxplot, data = dataReorg, prefix = filePrefixes, measureName = measureName, drugName = drugNames, drugColor = drugColors, suffix = &quot;pairedboxplot_all.png&quot;)
 
 # Plot box plots with phases 1 &amp; 2 only
-plots &lt;- mapply(plot_paired_boxplot, data = dataPhase12, prefix = filePrefixes, measureName = measureName, drugName = drugNames, drugColor = drugColors, suffix = &quot;pairedboxplot_phase12.png&quot;)</code></pre>
+plots_phase12 &lt;- mapply(plot_paired_boxplot, data = dataPhase12, prefix = filePrefixes, measureName = measureName, drugName = drugNames, drugColor = drugColors, suffix = &quot;pairedboxplot_phase12.png&quot;)</code></pre>
 </div>
 
 

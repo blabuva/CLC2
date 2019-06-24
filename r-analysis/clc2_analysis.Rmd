@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Load libraries
 
-```{r, message = FALSE}
+```{r load, message = FALSE}
 # tidyverse includes the packages readr, dplyr, ggplot2 ... etc.
 library(tidyverse)
 
@@ -33,7 +33,7 @@ source("../../Settings_Anaconda/Adams_rscripts/Adams_Functions.R")
 
 ## Set parameters
 
-```{r}
+```{r hard-coded}
 ## Hard-coded parameters
 directories <- c("../data/blinded/drug-clean", "../data/blinded/control-clean")
 drugColors <- c("red", "green")
@@ -48,7 +48,7 @@ figTitle <- "Change in oscillation duration for each slice"
 
 ## Preparation
 
-```{r}
+```{r paths}
 ## Construct file paths
 fileNames <- paste(filePrefixes, measureName, fileSuffix, sep = "_")
 filePaths <- fullfile(directories, fileNames)
@@ -70,7 +70,8 @@ paste("Number of files to process:", nFiles)
 ```{r, message = FALSE}
 # Import raw data
 dataRaw <- lapply(filePaths, function (x) {read_csv(x)})
-
+```
+```{r, echo = FALSE}
 # Display as tibbles
 paste(drugNames[1], ":", sep = "")
 dataRaw[[1]]
@@ -91,7 +92,8 @@ phaseNameTable
 ```{r}
 # Put into tidied format and rename variables
 dataReorg <- lapply(dataRaw, tidy_data_oscillations, phaseNameTable = phaseNameTable, measureName = measureName)
-
+```
+```{r, echo = FALSE}
 # Display as tibbles
 paste(drugNames[1], ":", sep = "")
 dataReorg[[1]]
@@ -114,34 +116,61 @@ paste("Paired t test formula:", formulaForTestStr)
 # Extract only phases 1 and 2
 dataPhase12 <- 
     lapply(dataReorg, function (x) {x %>% filter(phaseNumber == 1 | phaseNumber == 2)})
-
+```
+``` {r, message = FALSE}
 # Apply a paired two sample t-test between phases 1 and 2
 tTestResultPhase12 <- 
     lapply(dataPhase12, function (x) {t.test(formulaForTest, data = x, paired = TRUE)})
-
+```
+```{r, echo = FALSE}
 # Display results
 paste(drugNames[1], ":", sep = "")
 tTestResultPhase12[[1]]
 paste(drugNames[2], ":", sep = "")
 tTestResultPhase12[[2]]
 ```
-
+``` {r, message = FALSE}
+# Apply a paired Wilcoxon rank-sum test between phases 1 and 2
+wTestResultPhase12 <- 
+    lapply(dataPhase12, function (x) {wilcox.test(formulaForTest, data = x, paired = TRUE)})
+```
+```{r, echo = FALSE}
+# Display results
+paste(drugNames[1], ":", sep = "")
+wTestResultPhase12[[1]]
+paste(drugNames[2], ":", sep = "")
+wTestResultPhase12[[2]]
+```
 #### Drug vs. Wash-Out
 
 ``` {r, message = FALSE}
 # Extract only phases 2 and 3
 dataPhase23 <- 
     lapply(dataReorg, function (x) {x %>% filter(phaseNumber == 2 | phaseNumber == 3)})
-
+```
+``` {r, message = FALSE}
 # Apply a paired two sample t-test between phases 2 and 3
 tTestResultPhase23 <- 
     lapply(dataPhase23, function (x) {t.test(formulaForTest, data = x, paired = TRUE)})
-
+```
+```{r, echo = FALSE}
 # Display results
 paste(drugNames[1], ":", sep = "")
 tTestResultPhase23[[1]]
 paste(drugNames[2], ":", sep = "")
 tTestResultPhase23[[2]]
+```
+``` {r, message = FALSE}
+# Apply a paired Wilcoxon rank-sum test between phases 2 and 3
+wTestResultPhase23 <- 
+    lapply(dataPhase23, function (x) {wilcox.test(formulaForTest, data = x, paired = TRUE)})
+```
+```{r, echo = FALSE}
+# Display results
+paste(drugNames[1], ":", sep = "")
+wTestResultPhase23[[1]]
+paste(drugNames[2], ":", sep = "")
+wTestResultPhase23[[2]]
 ```
 
 #### Baseline vs. Wash-Out
@@ -150,26 +179,40 @@ tTestResultPhase23[[2]]
 # Extract only phases 1 and 3
 dataPhase13 <- 
     lapply(dataReorg, function (x) {x %>% filter(phaseNumber == 1 | phaseNumber == 3)})
-
+```
+``` {r, message = FALSE}
 # Apply a paired two sample t-test between phases 1 and 3
 tTestResultPhase13 <- 
     lapply(dataPhase13, function (x) {t.test(formulaForTest, data = x, paired = TRUE)})
-
+```
+```{r, echo = FALSE}
 # Display results
 paste(drugNames[1], ":", sep = "")
 tTestResultPhase13[[1]]
 paste(drugNames[2], ":", sep = "")
 tTestResultPhase13[[2]]
 ```
+``` {r, message = FALSE}
+# Apply a paired Wilcoxon rank-sum test between phases 1 and 3
+wTestResultPhase13 <- 
+    lapply(dataPhase13, function (x) {wilcox.test(formulaForTest, data = x, paired = TRUE)})
+```
+```{r, echo = FALSE}
+# Display results
+paste(drugNames[1], ":", sep = "")
+wTestResultPhase13[[1]]
+paste(drugNames[2], ":", sep = "")
+wTestResultPhase13[[2]]
+```
 
 ## Plots
 
 ``` {r, message = FALSE}
 # Plot box plots with all phases
-plots <- mapply(plot_paired_boxplot, data = dataReorg, prefix = filePrefixes, measureName = measureName, drugName = drugNames, drugColor = drugColors, suffix = "pairedboxplot_all.png")
+plots_all <- mapply(plot_paired_boxplot, data = dataReorg, prefix = filePrefixes, measureName = measureName, drugName = drugNames, drugColor = drugColors, suffix = "pairedboxplot_all.png")
 
 # Plot box plots with phases 1 & 2 only
-plots <- mapply(plot_paired_boxplot, data = dataPhase12, prefix = filePrefixes, measureName = measureName, drugName = drugNames, drugColor = drugColors, suffix = "pairedboxplot_phase12.png")
+plots_phase12 <- mapply(plot_paired_boxplot, data = dataPhase12, prefix = filePrefixes, measureName = measureName, drugName = drugNames, drugColor = drugColors, suffix = "pairedboxplot_phase12.png")
 ```
 
 ```{r OLD CODE, include = FALSE, eval = FALSE}

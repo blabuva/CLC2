@@ -1,17 +1,17 @@
 ---
 title: "CLC2 Blocker Analysis"
 author: "Adam Lu"
-date: "6/11/2019"
+date: "6/24/2019"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
+```{r setup, include = FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ## Load libraries
 
-```{r, message=FALSE}
+```{r, message = FALSE}
 # tidyverse includes the packages readr, dplyr, ggplot2 ... etc.
 library(tidyverse)
 
@@ -26,32 +26,41 @@ library(ggpubr)
 
 # matlab for fileparts
 library(matlab)
+
+# Custom functions (plot_paired_boxplot)
+source("../../Settings_Anaconda/Adams_rscripts/Adams_Functions.R")
 ```
 
 ## Set parameters
 
 ```{r}
 ## Hard-coded parameters
-drugFilePath <- "../data/blinded/drug-clean/drug-clean_oscDurationSec_averaged.csv"
-controlFilePath <- "../data/blinded/control-clean/control-clean_oscDurationSec_averaged.csv"
-phaseNamePath <- "phase_names.csv"
+directories <- c("../data/blinded/drug-clean", "../data/blinded/control-clean")
+drugColors <- c("red", "green")
+drugNames <- c("AK3-238", "DMSO")
+filePrefixes <- c("drug-clean", "control-clean")
+measureName <- "oscDurationSec"
 measureLabel <- "Oscillation Duration (s)"
+fileSuffix <- "averaged.csv"
+phaseNamePath <- "phase_names.csv"
 figTitle <- "Change in oscillation duration for each slice"
 ```
 
 ## Preparation
 
 ```{r}
-## Extract the file base names
-drugFileParts <- fileparts(drugFilePath)
-drugFileBase <- drugFileParts$name
-controlFileParts <- fileparts(controlFilePath)
-controlFileBase <- controlFileParts$name
+## Construct file paths
+fileNames <- paste(filePrefixes, measureName, fileSuffix, sep = "_")
+filePaths <- fullfile(directories, fileNames)
 
-## Extract the measure name
-drugFileBaseParts <- strsplit(drugFileBase, '_')
-measureName <- drugFileBaseParts[[1]][2]
-paste("Measure to analyze:", measureName)
+paste("This path will be analyzed:", filePaths)
+```
+
+```{r}
+## Count the number of files
+nFiles <- length(filePaths)
+
+paste("Number of files to process:", nFiles)
 ```
 
 ## Load data
@@ -59,34 +68,35 @@ paste("Measure to analyze:", measureName)
 #### Raw data
 
 ```{r, message = FALSE}
-drugDataRaw <- read_csv(drugFilePath)
-drugDataRaw
+# Import raw data
+dataRaw <- lapply(filePaths, function (x) {read_csv(x)})
+
+# Display as tibbles
+paste(drugNames[1], ":", sep = "")
+dataRaw[[1]]
+paste(drugNames[2], ":", sep = "")
+dataRaw[[2]]
 ```
 
-```{r, message = FALSE}
-controlDataRaw <- read_csv(controlFilePath)
-controlDataRaw
-```
+###### Auxiliary tables
 
 ```{r, message = FALSE}
+# Import the phase name table
 phaseNameTable <- read_csv(phaseNamePath)
 phaseNameTable
 ```
-
 
 #### Reorganized data
 
 ```{r}
 # Put into tidied format and rename variables
-drugData <- 
-    drugDataRaw %>% 
-    gather(key = "measureSliceName", value = !!measureName, -1) %>%
-    separate("measureSliceName", c("measureName", "date", "sliceStr"), sep = "_") %>% 
-    unite("sliceName", c("date", "sliceStr"), sep = "_") %>% 
-    left_join(phaseNameTable, by = "phaseNumber") %>% 
-    mutate("phaseName" = factor(phaseName))
+dataReorg <- lapply(dataRaw, tidy_data_oscillations, phaseNameTable = phaseNameTable, measureName = measureName)
 
-drugData
+# Display as tibbles
+paste(drugNames[1], ":", sep = "")
+dataReorg[[1]]
+paste(drugNames[2], ":", sep = "")
+dataReorg[[2]]
 ```
 
 ## Statistics
@@ -102,6 +112,95 @@ paste("Paired t test formula:", formulaForTestStr)
 
 ``` {r, message = FALSE}
 # Extract only phases 1 and 2
+dataPhase12 <- 
+    lapply(dataReorg, function (x) {x %>% filter(phaseNumber == 1 | phaseNumber == 2)})
+
+# Apply a paired two sample t-test between phases 1 and 2
+tTestResultPhase12 <- 
+    lapply(dataPhase12, function (x) {t.test(formulaForTest, data = x, paired = TRUE)})
+
+# Display results
+paste(drugNames[1], ":", sep = "")
+tTestResultPhase12[[1]]
+paste(drugNames[2], ":", sep = "")
+tTestResultPhase12[[2]]
+```
+
+#### Drug vs. Wash-Out
+
+``` {r, message = FALSE}
+# Extract only phases 2 and 3
+dataPhase23 <- 
+    lapply(dataReorg, function (x) {x %>% filter(phaseNumber == 2 | phaseNumber == 3)})
+
+# Apply a paired two sample t-test between phases 2 and 3
+tTestResultPhase23 <- 
+    lapply(dataPhase23, function (x) {t.test(formulaForTest, data = x, paired = TRUE)})
+
+# Display results
+paste(drugNames[1], ":", sep = "")
+tTestResultPhase23[[1]]
+paste(drugNames[2], ":", sep = "")
+tTestResultPhase23[[2]]
+```
+
+#### Baseline vs. Wash-Out
+
+``` {r, message = FALSE}
+# Extract only phases 1 and 3
+dataPhase13 <- 
+    lapply(dataReorg, function (x) {x %>% filter(phaseNumber == 1 | phaseNumber == 3)})
+
+# Apply a paired two sample t-test between phases 1 and 3
+tTestResultPhase13 <- 
+    lapply(dataPhase13, function (x) {t.test(formulaForTest, data = x, paired = TRUE)})
+
+# Display results
+paste(drugNames[1], ":", sep = "")
+tTestResultPhase13[[1]]
+paste(drugNames[2], ":", sep = "")
+tTestResultPhase13[[2]]
+```
+
+## Plots
+
+``` {r, message = FALSE}
+# Plot box plots with all phases
+plots <- mapply(plot_paired_boxplot, data = dataReorg, prefix = filePrefixes, measureName = measureName, drugName = drugNames, drugColor = drugColors, suffix = "pairedboxplot_all.png")
+
+# Plot box plots with phases 1 & 2 only
+plots <- mapply(plot_paired_boxplot, data = dataPhase12, prefix = filePrefixes, measureName = measureName, drugName = drugNames, drugColor = drugColors, suffix = "pairedboxplot_phase12.png")
+```
+
+```{r OLD CODE, include = FALSE, eval = FALSE}
+## Extract the file base names
+drugFileParts <- fileparts(drugFilePath)
+drugFileBase <- drugFileParts$name
+controlFileParts <- fileparts(controlFilePath)
+controlFileBase <- controlFileParts$name
+
+## Extract the measure name
+drugFileBaseParts <- strsplit(drugFileBase, '_')
+measureName <- drugFileBaseParts[[1]][2]
+paste("Measure to analyze:", measureName)
+
+drugDataRaw <- read_csv(drugFilePath)
+drugDataRaw
+controlDataRaw <- read_csv(controlFilePath)
+controlDataRaw
+
+# Put into tidied format and rename variables
+drugData <- 
+    drugDataRaw %>% 
+    gather(key = "measureSliceName", value = !!measureName, -1) %>%
+    separate("measureSliceName", c("measureName", "date", "sliceStr"), sep = "_") %>% 
+    unite("sliceName", c("date", "sliceStr"), sep = "_") %>% 
+    left_join(phaseNameTable, by = "phaseNumber") %>% 
+    mutate("phaseName" = factor(phaseName))
+
+drugData
+
+# Extract only phases 1 and 2
 drugDataPhase12 <- 
     drugData %>% filter(phaseNumber == 1 | phaseNumber == 2)
 
@@ -109,11 +208,7 @@ drugDataPhase12 <-
 tTestResultPhase12 <-
     t.test(formulaForTest, data = drugDataPhase12, paired = TRUE)
 tTestResultPhase12
-```
 
-#### Drug vs. Wash-Out
-
-``` {r, message = FALSE}
 # Extract only phases 2 and 3
 drugDataPhase23 <- 
     drugData %>% filter(phaseNumber == 2 | phaseNumber == 3)
@@ -122,11 +217,7 @@ drugDataPhase23 <-
 tTestResultPhase23 <-
     t.test(formulaForTest, data = drugDataPhase23, paired = TRUE)
 tTestResultPhase23
-```
 
-#### Baseline vs. Wash-Out
-
-``` {r, message = FALSE}
 # Extract only phases 1 and 3
 drugDataPhase13 <- 
     drugData %>% filter(phaseNumber == 1 | phaseNumber == 3)
@@ -135,17 +226,13 @@ drugDataPhase13 <-
 tTestResultPhase13 <-
     t.test(formulaForTest, data = drugDataPhase13, paired = TRUE)
 tTestResultPhase13
-```
 
-## Plots
-
-``` {r, message = FALSE}
 # Pair the data to visualize the change from baseline to drug
 ggpaired(drugData, x = "phaseName", y = measureName, id = "sliceName",
-    color = "phaseName", fill = "white", palette = c("blue", "red", "purple"), 
-    width = 0.5, point.size = 1.2, line.size = 0.5, line.color = "gray", 
+    color = "phaseName", fill = "white", palette = c("blue", "red", "purple"),
+    width = 0.5, point.size = 1.2, line.size = 0.5, line.color = "gray",
     title = figTitle, xlab = FALSE, ylab = measureLabel, legend.title = "Phase Name")
-
 ggsave(paste(measureName, "pairedboxplot.png", sep = "_"))
+
 ```
 
